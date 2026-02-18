@@ -43,7 +43,7 @@ const { getMetroConfig } = require('pear-runtime-react-native/metro-config')
 module.exports = getMetroConfig(__dirname)
 ```
 
-Uses `@react-native/metro-config` and merges `expo/metro-config` when present, so `npx react-native bundle` works for OTA payloads.
+Add `@react-native/metro-config` to your devDependencies. With Expo, `expo/metro-config` is merged in automatically. Then `npx react-native bundle` works for OTA payloads.
 
 ### App entry & confirm update
 
