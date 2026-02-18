@@ -12,7 +12,7 @@ Requires `react-native-bare-kit` in your project.
 
 ## OTA updates
 
-OTA works for **Expo** and **bare React Native**. Native setup differs; Metro and JS setup are the same.
+OTA works for **Expo** and **plain React Native**. Native setup differs; Metro and JS setup are the same.
 
 ### Flow: Expo
 
@@ -30,7 +30,7 @@ OTA works for **Expo** and **bare React Native**. Native setup differs; Metro an
 
 2. **Metro** and **App entry** below.
 
-### Flow: Bare React Native
+### Flow: Plain React Native
 
 Apply the same native changes (iOS `bundleURL`, Android `getJSBundleFile`) to your `ios/` and `android/` projects manually so release builds load from `pear-runtime/upgrade/runtime.{ios|android}.bundle` when present. Then do **Metro** and **App entry** below.
 
@@ -44,6 +44,9 @@ module.exports = getMetroConfig(__dirname)
 ```
 
 Add `@react-native/metro-config` to your devDependencies. With Expo, `expo/metro-config` is merged in automatically. Then `npx react-native bundle` works for OTA payloads.
+```sh
+npm install @react-native/metro-config --save-dev
+```
 
 ### App entry & confirm update
 
@@ -71,8 +74,6 @@ export default function Root() {
 }
 ```
 
-Pass `version` and `upgrade` from `package.json` into the PearRuntime constructor when you create the runtime.
-
 ### Create OTA bundle (payload)
 
 From the project root (entry file must match your app, e.g. `index.js`):
@@ -92,16 +93,9 @@ Then stage and seed with `pear` as in your OTA flow.
 ```js
 import PearRuntime from 'pear-runtime-react-native'
 import bundle from './worker.bundle.js'
-import { version, upgrade } from './package.json'
 
 const runtime = new PearRuntime()
 const IPC = runtime.run('/worker.bundle', bundle, [runtime.dir])
-
-// In worklet: use version/upgrade for OTA
-runtime.on('updated', () => {
-  runtime.applyUpdate()
-  console.log('restart for update')
-})
 ```
 
 ---

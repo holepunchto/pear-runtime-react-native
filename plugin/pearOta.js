@@ -102,7 +102,7 @@ function withAndroidBundleFile(config) {
           /(override\s+fun\s+getPackages\s*\(\s*\)\s*:\s*List\s*<\s*ReactPackage\s*>\s*=[\s\S]*?^\s*\})/m
         )
         if (!m) return config
-        contents = contents.replace(m[0], m[0] + t.androidOverridesBlock(EXPO_BUNDLE_ROOT))
+        contents = contents.replace(m[0], m[0] + t.androidOverridesBlock())
       }
       await fs.writeFile(mainAppPath, contents)
       return config
