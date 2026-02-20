@@ -1,6 +1,6 @@
 {
   "name": "pear-runtime-react-native",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Enables OTA updates with pear-runtime in react-native mobile apps",
   "main": "index.js",
   "exports": {
@@ -10,7 +10,6 @@
       "default": "./index.js"
     },
     "./metro-config": "./metro.js",
-    "./guard": "./guard.js",
     "./plugin": "./plugin/pearOta.js"
   },
   "files": [
@@ -18,7 +17,6 @@
     "index.js",
     "index.d.ts",
     "metro.js",
-    "guard.js",
     "lib/ota-templates.js",
     "plugin/pearOta.js"
   ],

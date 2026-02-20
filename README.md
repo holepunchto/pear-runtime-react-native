@@ -10,6 +10,18 @@ Requires `react-native-bare-kit` in your project.
 
 ---
 
+## Usage
+
+```js
+import PearRuntime from 'pear-runtime-react-native'
+import bundle from './worker.bundle.js'
+
+const runtime = new PearRuntime()
+const IPC = runtime.run('/worker.bundle', bundle, [runtime.dir])
+```
+
+---
+
 ## OTA updates
 
 OTA works for **Expo** and **plain React Native**. Native setup differs; Metro and JS setup are the same.
@@ -26,13 +38,13 @@ OTA works for **Expo** and **plain React Native**. Native setup differs; Metro a
    npx expo prebuild
    ```
 
-   Release builds load the OTA bundle from `pear-runtime/upgrade/runtime.{ios|android}.bundle` when present.
+   Release builds load the OTA bundle from `pear-runtime/upgrade/app.bundle` when present.
 
 2. **Metro** and **App entry** below.
 
 ### Flow: Plain React Native
 
-Apply the same native changes (iOS `bundleURL`, Android `getJSBundleFile`) to your `ios/` and `android/` projects manually so release builds load from `pear-runtime/upgrade/runtime.{ios|android}.bundle` when present. Then do **Metro** and **App entry** below.
+Apply the same native changes (iOS `bundleURL`, Android `getJSBundleFile`) to your `ios/` and `android/` projects manually so release builds load from `pear-runtime/upgrade/app.bundle` when present. Then do **Metro** and **App entry** below.
 
 ### Metro
 
@@ -44,34 +56,9 @@ module.exports = getMetroConfig(__dirname)
 ```
 
 Add `@react-native/metro-config` to your devDependencies. With Expo, `expo/metro-config` is merged in automatically. Then `npx react-native bundle` works for OTA payloads.
+
 ```sh
 npm install @react-native/metro-config --save-dev
-```
-
-### App entry & confirm update
-
-Install `@react-native-async-storage/async-storage` for OTA state.
-
-**Entry** (e.g. `index.js` or `App.tsx`):
-
-```js
-import { bootstrap } from 'pear-runtime-react-native/guard'
-import App from './App'
-bootstrap(App)
-```
-
-**Root component** — confirm update after load:
-
-```js
-import { useEffect } from 'react'
-import { confirmUpdate } from 'pear-runtime-react-native/guard'
-
-export default function Root() {
-  useEffect(() => {
-    confirmUpdate()
-  }, [])
-  // ...
-}
 ```
 
 ### Create OTA bundle (payload)
@@ -79,8 +66,8 @@ export default function Root() {
 From the project root (entry file must match your app, e.g. `index.js`):
 
 ```sh
-npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output dist/runtime.ios.bundle --assets-dest dist/assets
-npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output dist/runtime.android.bundle --assets-dest dist/assets
+npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output dist/app.bundle --assets-dest dist/assets
+npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output dist/app.bundle --assets-dest dist/assets
 cp -f package.json dist/package.json
 ```
 
@@ -88,25 +75,13 @@ Then stage and seed with `pear` as in your OTA flow.
 
 ---
 
-## Usage
-
-```js
-import PearRuntime from 'pear-runtime-react-native'
-import bundle from './worker.bundle.js'
-
-const runtime = new PearRuntime()
-const IPC = runtime.run('/worker.bundle', bundle, [runtime.dir])
-```
-
----
-
 ## API
 
 - **`new PearRuntime()`** — Create runtime. `runtime.dir` is the app storage path.
-- **`runtime.on(event, callback)`** / **`off`** / **`once`** — Subscribe to events (e.g. `'updating'`, `'updated'`).
+- **`runtime.on(event, callback)`** / **`off`** / **`once`** — Event shim.
 - **`runtime.run(filename, bundle, argv)`** — Start worklet; returns IPC duplex.
-- **`runtime.ready()`** / **`runtime.close()`** — Promise; no-op on mobile (API compatibility).
-- **`runtime.applyUpdate()`** — Promise; not supported on mobile (logs warning).
+- **`runtime.ready()`** / **`runtime.close()`** — Promise; no-op in react-native (API compatibility).
+- **`runtime.applyUpdate()`** — Promise; no-op in react-native (API compatibility).
 
 ---
 
