@@ -1,6 +1,6 @@
 {
   "name": "pear-runtime-react-native",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Enables OTA updates with pear-runtime in react-native mobile apps",
   "main": "index.js",
   "exports": {
