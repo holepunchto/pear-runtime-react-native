@@ -42,8 +42,7 @@
     "prettier-config-holepunch": "^2.0.0"
   },
   "peerDependencies": {
-    "react-native-bare-kit": "*",
-    "react-native-fs": "*"
+    "react-native-bare-kit": "*"
   },
   "peerDependenciesMeta": {
     "expo": {

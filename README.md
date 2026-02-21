@@ -8,7 +8,9 @@ npm install pear-runtime-react-native react-native-bare-kit
 
 Requires `react-native-bare-kit` in your project.
 
----
+## MVP - EXPERIMENTAL
+
+This boilerplate is MVP and Experimental.
 
 ## Usage
 
@@ -66,24 +68,22 @@ npm install @react-native/metro-config --save-dev
 From the project root (entry file must match your app, e.g. `index.js`):
 
 ```sh
-npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output dist/app.bundle --assets-dest dist/assets
-npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output dist/app.bundle --assets-dest dist/assets
+npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output dist/by-arch/<host-arch>/app/app.bundle --assets-dest dist/by-arch/<host-arch>/app
+npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output dist/by-arch/<host-arch>/app/app.bundle --assets-dest dist/by-arch/<host-arch>/app
 cp -f package.json dist/package.json
 ```
 
 Then stage and seed with `pear` as in your OTA flow.
 
----
-
 ## API
 
-- **`new PearRuntime()`** — Create runtime. `runtime.dir` is the app storage path.
-- **`runtime.on(event, callback)`** / **`off`** / **`once`** — Event shim.
-- **`runtime.run(filename, bundle, argv)`** — Start worklet; returns IPC duplex.
-- **`runtime.ready()`** / **`runtime.close()`** — Promise; no-op in react-native (API compatibility).
-- **`runtime.applyUpdate()`** — Promise; no-op in react-native (API compatibility).
+#### `const pear = PearRuntime()`
 
----
+Create a pear runtime (currently doesnt do anything on its own).
+
+#### `IPC <stream.Duplex> = pear.run(filename, bundle, argv)`
+
+Start a Bare worklet. returns IPC duplex stream.
 
 ## License
 
