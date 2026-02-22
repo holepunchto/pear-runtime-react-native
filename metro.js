@@ -1,15 +1,26 @@
 'use strict'
 
-function getMetroConfig(projectRoot) {
+function getMetroConfig(projectRoot, options = {}) {
+  const { useExpo = true, useSentry = false } = options
   const { getDefaultConfig: getRNConfig, mergeConfig } = require('@react-native/metro-config')
-  const rnConfig = getRNConfig(projectRoot)
-  try {
-    const { getDefaultConfig: getExpoConfig } = require('expo/metro-config')
-    const expoConfig = getExpoConfig(projectRoot)
-    return mergeConfig(rnConfig, expoConfig)
-  } catch (_) {
-    return rnConfig
+
+  let config = getRNConfig(projectRoot)
+
+  if (useExpo) {
+    try {
+      const { getDefaultConfig: getExpoConfig } = require('expo/metro-config')
+      config = mergeConfig(config, getExpoConfig(projectRoot))
+    } catch (_) {}
   }
+
+  if (useSentry) {
+    try {
+      const { getSentryExpoConfig } = require('@sentry/react-native/metro')
+      config = mergeConfig(config, getSentryExpoConfig(projectRoot))
+    } catch (_) {}
+  }
+
+  return config
 }
 
 module.exports = { getMetroConfig }
