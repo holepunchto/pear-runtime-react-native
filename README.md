@@ -19,7 +19,7 @@ import PearRuntime from 'pear-runtime-react-native'
 import bundle from './worker.bundle.js'
 
 const runtime = new PearRuntime()
-const IPC = runtime.run('/worker.bundle', bundle, [runtime.dir])
+const IPC = runtime.run('/worker.bundle', bundle)
 ```
 
 ---
