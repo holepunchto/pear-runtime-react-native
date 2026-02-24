@@ -6,6 +6,27 @@ const t = require(path.join(__dirname, '../lib/ota-templates.js'))
 
 const EXPO_BUNDLE_ROOT = '.expo/.virtual-metro-entry'
 
+const PRODUCT_NAME_ERROR = 'pear-runtime-react-native: package.json must have a "productName" field'
+
+async function getProductName(projectRoot) {
+  const pkgPath = path.join(projectRoot, 'package.json')
+  let pkg
+  try {
+    const raw = await fs.readFile(pkgPath, 'utf8')
+    pkg = JSON.parse(raw)
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      throw new Error(`${PRODUCT_NAME_ERROR} No package.json found at ${pkgPath}.`)
+    }
+    throw new Error(`${PRODUCT_NAME_ERROR} Failed to read package.json: ${err.message}.`)
+  }
+  const productName = pkg.productName
+  if (productName === undefined || productName === null || String(productName).trim() === '') {
+    throw new Error(`${PRODUCT_NAME_ERROR} Add "productName": "YourAppName" to your package.json.`)
+  }
+  return String(productName).trim()
+}
+
 async function findAppDelegatePath(platformRoot, projectName) {
   const candidates = [
     path.join(platformRoot, projectName, 'AppDelegate.swift'),
@@ -58,6 +79,8 @@ function withIosBundleUrl(config) {
     async (config) => {
       if (config.modRequest.introspect) return config
       const platformRoot = config.modRequest.platformProjectRoot
+      const projectRoot = config.modRequest.projectRoot || path.dirname(platformRoot)
+      const appName = await getProductName(projectRoot)
       const projectName = config.modRequest.projectName || 'unknown'
       const appDelegatePath = await findAppDelegatePath(platformRoot, projectName)
       if (!appDelegatePath) return config
@@ -67,8 +90,8 @@ function withIosBundleUrl(config) {
       const re = isSwift ? t.IOS_SWIFT_REGEX : t.IOS_OBJC_REGEX
       if (!re.test(contents)) return config
       const newMethod = isSwift
-        ? t.swiftBundleUrl(EXPO_BUNDLE_ROOT)
-        : t.objCBundleUrl(EXPO_BUNDLE_ROOT)
+        ? t.swiftBundleUrl(EXPO_BUNDLE_ROOT, appName)
+        : t.objCBundleUrl(EXPO_BUNDLE_ROOT, appName)
       contents = contents.replace(re, t.OTA_MARKER + '\n' + newMethod)
       await fs.writeFile(appDelegatePath, contents)
       return config
@@ -83,6 +106,8 @@ function withAndroidBundleFile(config) {
     async (config) => {
       if (config.modRequest.introspect) return config
       const platformRoot = config.modRequest.platformProjectRoot
+      const projectRoot = config.modRequest.projectRoot || path.dirname(platformRoot)
+      const appName = await getProductName(projectRoot)
       const mainAppPath = await findMainApplicationPath(platformRoot)
       if (!mainAppPath) return config
       let contents = await fs.readFile(mainAppPath, 'utf8')
@@ -95,14 +120,14 @@ function withAndroidBundleFile(config) {
         contents = contents.replace(
           /(override\s+fun\s+getJSBundleFile\s*\(\s*\)\s*:\s*String\?\s*\{)[\s\S]*?(\n\s*\})/m,
           (_, open, close) =>
-            `${t.OTA_MARKER_ANDROID}\n${open}\n${t.ANDROID_GETJSBUNDLE_BODY}${close}`
+            `${t.OTA_MARKER_ANDROID}\n${open}\n${t.androidGetJsBundleBody(appName)}${close}`
         )
       } else {
         const m = contents.match(
           /(override\s+fun\s+getPackages\s*\(\s*\)\s*:\s*List\s*<\s*ReactPackage\s*>\s*=[\s\S]*?^\s*\})/m
         )
         if (!m) return config
-        contents = contents.replace(m[0], m[0] + t.androidOverridesBlock())
+        contents = contents.replace(m[0], m[0] + t.androidOverridesBlock(appName))
       }
       await fs.writeFile(mainAppPath, contents)
       return config

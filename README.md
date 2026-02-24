@@ -40,13 +40,13 @@ OTA works for **Expo** and **plain React Native**. Native setup differs; Metro a
    npx expo prebuild
    ```
 
-   Release builds load the OTA bundle from `pear-runtime/upgrade/app.bundle` when present.
+   Release builds load the OTA bundle from `pear-runtime/<productName>/app.bundle` when present (see **productName** below).
 
 2. **Metro** and **App entry** below.
 
 ### Flow: Plain React Native
 
-Apply the same native changes (iOS `bundleURL`, Android `getJSBundleFile`) to your `ios/` and `android/` projects manually so release builds load from `pear-runtime/upgrade/app.bundle` when present. Then do **Metro** and **App entry** below.
+Apply the same native changes (iOS `bundleURL`, Android `getJSBundleFile`) to your `ios/` and `android/` projects manually so release builds load from `pear-runtime/<productName>/app.bundle` when present (see **productName** below). Then do **Metro** and **App entry** below.
 
 ### Metro
 
@@ -76,6 +76,17 @@ cp -f package.json dist/package.json
 ```
 
 Then stage and seed with `pear` as in your OTA flow.
+
+### productName (required for OTA)
+
+The OTA bundle path is `pear-runtime/<appName>/app.bundle`, where `appName` is taken from the **host app’s** `package.json` **`productName`** field. You must set it before running prebuild:
+
+```json
+{ "name": "my-app", "productName": "MyApp" }
+```
+
+- **Prebuild:** If `productName` is missing or empty, the Expo config plugin throws and prebuild fails.
+- **Runtime:** If the app name is missing in the injected native code, the app throws at boot as a fallback.
 
 ## API
 
