@@ -40,13 +40,13 @@ OTA works for **Expo** and **plain React Native**. Native setup differs; Metro a
    npx expo prebuild
    ```
 
-   Release builds load the OTA bundle from `pear-runtime/upgrade/app.bundle` when present.
+   Release builds load the OTA bundle from `pear-runtime/ota/app.bundle` when present.
 
 2. **Metro** and **App entry** below.
 
 ### Flow: Plain React Native
 
-Apply the same native changes (iOS `bundleURL`, Android `getJSBundleFile`) to your `ios/` and `android/` projects manually so release builds load from `pear-runtime/upgrade/app.bundle` when present. Then do **Metro** and **App entry** below.
+Apply the same native changes (iOS `bundleURL`, Android `getJSBundleFile`) to your `ios/` and `android/` projects manually so release builds load from `pear-runtime/ota/app.bundle` when present. Then do **Metro** and **App entry** below.
 
 ### Metro
 
