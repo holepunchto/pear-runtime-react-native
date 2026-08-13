@@ -5,6 +5,7 @@ const path = require('path')
 const t = require(path.join(__dirname, '../lib/ota-templates.js'))
 
 const EXPO_BUNDLE_ROOT = '.expo/.virtual-metro-entry'
+const ISSUES = 'https://github.com/holepunchto/pear-runtime-react-native/issues'
 
 async function findAppDelegatePath(platformRoot, projectName) {
   const candidates = [
@@ -35,13 +36,9 @@ async function findMainApplicationInDir(dir) {
   return null
 }
 
-async function findMainApplicationPath(platformRoot) {
+function findMainApplicationPath(platformRoot) {
   const javaDir = path.join(platformRoot, 'app', 'src', 'main', 'java')
-  try {
-    return await findMainApplicationInDir(javaDir)
-  } catch {
-    return null
-  }
+  return findMainApplicationInDir(javaDir)
 }
 
 function pearOta(config) {
@@ -60,12 +57,24 @@ function withIosBundleUrl(config) {
       const platformRoot = config.modRequest.platformProjectRoot
       const projectName = config.modRequest.projectName || 'unknown'
       const appDelegatePath = await findAppDelegatePath(platformRoot, projectName)
-      if (!appDelegatePath) return config
+      if (!appDelegatePath) {
+        throw new Error(
+          `pear-runtime-react-native: no AppDelegate found under ${path.join(platformRoot, projectName)}, ` +
+            `so bundleURL() cannot be patched and release builds would silently ignore Pear updates. ` +
+            `Please open an issue at ${ISSUES}`
+        )
+      }
       let contents = await fs.readFile(appDelegatePath, 'utf8')
       if (contents.includes(t.OTA_MARKER)) return config
       const isSwift = appDelegatePath.endsWith('.swift')
       const re = isSwift ? t.IOS_SWIFT_REGEX : t.IOS_OBJC_REGEX
-      if (!re.test(contents)) return config
+      if (!re.test(contents)) {
+        throw new Error(
+          `pear-runtime-react-native: no bundleURL implementation found in ${appDelegatePath}, ` +
+            `so release builds would silently ignore Pear updates. This React Native version is not ` +
+            `supported yet -- please open an issue at ${ISSUES}`
+        )
+      }
       const newMethod = isSwift
         ? t.swiftBundleUrl(EXPO_BUNDLE_ROOT)
         : t.objCBundleUrl(EXPO_BUNDLE_ROOT)
@@ -84,27 +93,23 @@ function withAndroidBundleFile(config) {
       if (config.modRequest.introspect) return config
       const platformRoot = config.modRequest.platformProjectRoot
       const mainAppPath = await findMainApplicationPath(platformRoot)
-      if (!mainAppPath) return config
-      let contents = await fs.readFile(mainAppPath, 'utf8')
-      if (contents.includes(t.OTA_MARKER_ANDROID)) return config
-      if (!contents.includes('import java.io.File')) {
-        contents = contents.replace(/(package\s+[\w.]+\s*)/m, '$1\nimport java.io.File\n')
-      }
-      const hasGetJSBundle = /override\s+fun\s+getJSBundleFile\s*\(/.test(contents)
-      if (hasGetJSBundle) {
-        contents = contents.replace(
-          /(override\s+fun\s+getJSBundleFile\s*\(\s*\)\s*:\s*String\?\s*\{)[\s\S]*?(\n\s*\})/m,
-          (_, open, close) =>
-            `${t.OTA_MARKER_ANDROID}\n${open}\n${t.ANDROID_GETJSBUNDLE_BODY}${close}`
+      if (!mainAppPath) {
+        throw new Error(
+          `pear-runtime-react-native: no MainApplication found under ${platformRoot}, so the OTA ` +
+            `bundle path cannot be wired up and release builds would silently ignore Pear updates. ` +
+            `Please open an issue at ${ISSUES}`
         )
-      } else {
-        const m = contents.match(
-          /(override\s+fun\s+getPackages\s*\(\s*\)\s*:\s*List\s*<\s*ReactPackage\s*>\s*=[\s\S]*?^\s*\})/m
-        )
-        if (!m) return config
-        contents = contents.replace(m[0], m[0] + t.androidOverridesBlock())
       }
-      await fs.writeFile(mainAppPath, contents)
+      if (!mainAppPath.endsWith('.kt')) {
+        throw new Error(
+          `pear-runtime-react-native: ${mainAppPath} is Java; only a Kotlin MainApplication can be ` +
+            `patched for OTA updates. Convert it to MainApplication.kt, or apply the Android changes ` +
+            `by hand as described in the README.`
+        )
+      }
+      const contents = await fs.readFile(mainAppPath, 'utf8')
+      const patched = t.patchAndroidMainApplication(contents)
+      if (patched !== null) await fs.writeFile(mainAppPath, patched)
       return config
     }
   ])

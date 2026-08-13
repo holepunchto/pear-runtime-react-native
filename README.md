@@ -40,13 +40,40 @@ OTA works for **Expo** and **plain React Native**. Native setup differs; Metro a
    npx expo prebuild
    ```
 
-   Release builds load the OTA bundle from `pear-runtime/ota/app.bundle` when present.
+   Release builds load the OTA bundle from `pear-runtime/ota/app.bundle`. If the plugin cannot
+   find a place to wire that up it throws during prebuild rather than leaving you with a release
+   build that silently ignores updates.
 
 2. **Metro** and **App entry** below.
 
 ### Flow: Plain React Native
 
-Apply the same native changes (iOS `bundleURL`, Android `getJSBundleFile`) to your `ios/` and `android/` projects manually so release builds load from `pear-runtime/ota/app.bundle` when present. Then do **Metro** and **App entry** below.
+Apply the same native changes to your `ios/` and `android/` projects manually, then do **Metro**
+and **App entry** below.
+
+- **iOS** — override `bundleURL()` in `AppDelegate` to return
+  `<Application Support>/pear-runtime/ota/app.bundle` when that file exists, else the bundle
+  embedded in the app.
+- **Android** — return `<filesDir>/pear-runtime/ota/app.bundle` from `getJSBundleFile()`, and copy
+  the APK's embedded `index.android.bundle` to that path on first launch. See
+  [Android bundle path](#android-bundle-path) for why the file has to be seeded.
+
+### Android bundle path
+
+On iOS `bundleURL()` is called every time the bundle is loaded, so it can check for an OTA file and
+fall back to the embedded one. Android has no equivalent hook: the path is resolved **once**, when
+the `ReactHost` (or `ReactInstanceManager`) is built, and the result is kept for the life of the
+process. A "use the OTA file if it exists" check would therefore resolve to the embedded bundle on a
+freshly installed app and stay there, so the first applied update would never load and the app would
+keep offering it after every restart.
+
+Release builds instead always load from `<filesDir>/pear-runtime/ota/app.bundle`, seeded from the
+APK's embedded bundle on first launch and re-seeded whenever a new APK is installed. Applying an
+update swaps a new bundle into that path and it is picked up on the next reload. The cost is one
+extra copy of the JS bundle in app storage.
+
+Note that Android resolves image assets to drawables compiled into the APK, so an OTA payload that
+adds or changes images will not pick them up — JS-only changes are fine.
 
 ### Metro
 
