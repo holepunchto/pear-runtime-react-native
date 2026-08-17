@@ -40,7 +40,17 @@ OTA works for **Expo** and **plain React Native**. Native setup differs; Metro a
    npx expo prebuild
    ```
 
-   Release builds load the OTA bundle from `pear-runtime/ota/app.bundle` when present.
+   Release builds load `pear-runtime/ota/app.bundle` only when the `version` in
+   `pear-runtime/ota/package.json` is newer than the installed app version, otherwise they
+   load the bundle shipped in the binary. Both versions must be valid SemVer
+   (`major.minor.patch`); anything else is treated as not newer. Prerelease precedence
+   follows SemVer 2.0.0 and build metadata does not affect update ordering.
+
+   Upgrading from an older generated OTA integration requires one clean regeneration:
+
+   ```sh
+   npx expo prebuild --clean
+   ```
 
 2. **Metro** and **App entry** below.
 
