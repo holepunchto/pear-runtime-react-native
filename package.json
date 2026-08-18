@@ -33,5 +33,17 @@
     "lunte": "^1.2.0",
     "prettier": "^3.6.2",
     "prettier-config-holepunch": "^2.0.0"
+  },
+  "peerDependencies": {
+    "@react-native/metro-config": "*",
+    "expo": "*"
+  },
+  "peerDependenciesMeta": {
+    "@react-native/metro-config": {
+      "optional": true
+    },
+    "expo": {
+      "optional": true
+    }
   }
 }

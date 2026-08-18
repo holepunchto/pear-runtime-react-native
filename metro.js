@@ -7,20 +7,30 @@ function getMetroConfig(projectRoot, options = {}) {
   let config = getRNConfig(projectRoot)
 
   if (useExpo) {
-    try {
-      const { getDefaultConfig: getExpoConfig } = require('expo/metro-config')
-      config = mergeConfig(config, getExpoConfig(projectRoot))
-    } catch (_) {}
+    const expo = load('expo/metro-config', options.useExpo === true)
+    if (expo !== null) config = mergeConfig(config, expo.getDefaultConfig(projectRoot))
   }
 
   if (useSentry) {
-    try {
-      const { getSentryExpoConfig } = require('@sentry/react-native/metro')
-      config = mergeConfig(config, getSentryExpoConfig(projectRoot))
-    } catch (_) {}
+    const sentry = load('@sentry/react-native/metro', true)
+    if (sentry !== null) config = mergeConfig(config, sentry.getSentryExpoConfig(projectRoot))
   }
 
   return config
+}
+
+function load(specifier, required) {
+  try {
+    return require(specifier)
+  } catch (err) {
+    if (required || !isMissing(err, specifier)) throw err
+    return null
+  }
+}
+
+function isMissing(err, specifier) {
+  if (err.code !== 'MODULE_NOT_FOUND' && err.code !== 'ERR_MODULE_NOT_FOUND') return false
+  return err.message.includes(specifier)
 }
 
 module.exports = { getMetroConfig }
