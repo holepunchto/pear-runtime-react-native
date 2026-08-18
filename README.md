@@ -1,6 +1,6 @@
 # pear-runtime-react-native
 
-Native OTA setup for React Native apps. Ships an [Expo](https://expo.dev) config plugin that makes release builds boot a Pear-delivered JS bundle, plus a Metro config helper for building those bundles.
+Native OTA setup for React Native apps. An [Expo](https://expo.dev) config plugin that makes release builds boot a Pear-delivered JS bundle.
 
 ```sh
 npm install pear-runtime-react-native
@@ -14,10 +14,7 @@ This boilerplate is MVP and Experimental.
 
 ## Scope
 
-This package owns exactly two things:
-
-- **Boot control.** An Expo config plugin that patches the generated native projects so release builds choose between the OTA bundle and the bundle shipped in the binary.
-- **Metro config.** A helper that merges the React Native and Expo Metro defaults so `npx react-native bundle` produces usable OTA payloads.
+This package owns exactly one thing, **boot control**: an Expo config plugin that patches the generated native projects so release builds choose between the OTA bundle and the bundle shipped in the binary.
 
 Everything else in a working Pear mobile app belongs to [pear-mobile](https://github.com/holepunchto/pear-mobile).
 
@@ -30,13 +27,12 @@ A complete working project is [hello-pear-react-native](https://github.com/holep
 ```sh
 npm install pear-runtime-react-native pear-mobile react-native-bare-kit
 npx expo install expo-build-properties
-npm install --save-dev @react-native/metro-config @react-native-community/cli
 ```
 
 - **`pear-mobile`** is used to start a bare thread and run the updater in-app.
-- **`@react-native/metro-config`** is an optional peer of this package and must be installed by the app, at the version matching its React Native. It is deliberately not a hard dependency here so the project keeps control of the version.
-- **`@react-native-community/cli`** is required because `npx react-native bundle` in modern React Native only delegates. `react-native/cli.js` resolves `@react-native-community/cli` from the project and throws `react-native/cli is deprecated` when it is absent, which means OTA payloads cannot be built without it.
 - **`expo`** is required for the plugin flow even though it is an optional peer. The peer is optional because manual integration in a plain React Native project is also supported.
+
+The packages needed to build a payload, `@react-native/metro-config` and `@react-native-community/cli`, are listed in [pear-mobile](https://github.com/holepunchto/pear-mobile#building-the-payload) with the rest of that flow.
 
 ## Expo setup
 
@@ -74,7 +70,7 @@ Then generate the native projects:
 npx expo prebuild
 ```
 
-The plugin edits two files. In `AppDelegate.swift` it replaces `bundleURL()`. In `MainApplication.kt` it passes `jsBundleFilePath` into `ExpoReactHostFactory.getDefaultReactHost()` and appends the version check helpers. 
+The plugin edits two files. In `AppDelegate.swift` it replaces `bundleURL()`. In `MainApplication.kt` it passes `jsBundleFilePath` into `ExpoReactHostFactory.getDefaultReactHost()` and appends the version check helpers.
 
 use the `--clean` flag to re-generate already patched files.
 
@@ -125,76 +121,12 @@ Two independent gates enforce different halves of this, and they are worth keepi
 - `pear.json` `updates.minver` is checked by `pear-mobile` before a payload is downloaded and applied. It stops an OTA from reaching a native build that is too old for it, which is the forward direction. See [pear-mobile](https://github.com/holepunchto/pear-mobile#native-compatibility).
 - Boot control, in this package, runs on every launch and compares only the installed OTA manifest version against the native version. It never reads `pear.json`, so `minver` plays no part in choosing which bundle boots.
 
-## Metro
-
-Create `metro.config.js` in the project root:
-
-```js
-const { getMetroConfig } = require('pear-runtime-react-native/metro-config')
-module.exports = getMetroConfig(__dirname)
-```
-
-**Options** (second argument):
-
-- `useExpo` merges in `expo/metro-config`. Left unset it defaults to on and is treated as a preference, so a project without Expo installed is simply bundled without that merge. Passing `true` explicitly makes it a requirement, and a missing `expo/metro-config` then throws.
-- `useSentry` merges in `@sentry/react-native/metro`, default `false`. Because it is off by default, passing `true` is always an explicit opt-in and requires `@sentry/react-native` to be installed. A missing one throws.
-
-For plain React Native, either leave `useExpo` unset or turn it off explicitly:
-
-```js
-module.exports = getMetroConfig(__dirname, { useExpo: false })
-```
-
-Existing custom Metro settings must be merged into the returned config, not used in place of it. Mutating or spreading the nested objects keeps the React Native and Expo defaults that OTA bundling depends on, whereas assigning a fresh `resolver` or `transformer` replaces them:
-
-```js
-const path = require('path')
-const { getMetroConfig } = require('pear-runtime-react-native/metro-config')
-
-const config = getMetroConfig(__dirname)
-
-config.watchFolders = [...(config.watchFolders ?? []), path.resolve(__dirname, '../shared')]
-
-config.resolver = {
-  ...config.resolver,
-  extraNodeModules: {
-    ...config.resolver.extraNodeModules,
-    '@app': path.resolve(__dirname, 'src')
-  }
-}
-
-config.transformer = {
-  ...config.transformer,
-  minifierConfig: { compress: { drop_console: true } }
-}
-
-module.exports = config
-```
-
-Add `@react-native/metro-config` to the project devDependencies, at the version matching the project React Native. Then `npx react-native bundle` works for OTA payloads.
-
-```sh
-npm install @react-native/metro-config --save-dev
-```
-
-### Bundling for OTA
-
-With that config in place, the bundle for a payload is produced with the React Native CLI, once per platform, into a directory named exactly `productName`:
-
-```sh
-npx react-native bundle --platform ios --dev false --entry-file index.js \
-  --bundle-output out/ios/ExampleApp/app.bundle --assets-dest out/ios/ExampleApp
-npx react-native bundle --platform android --dev false --entry-file index.js \
-  --bundle-output out/android/ExampleApp/app.bundle --assets-dest out/android/ExampleApp
-```
-
-Assembling those directories into a deployment folder is `pear-build`'s job, see [pear-mobile](https://github.com/holepunchto/pear-mobile#building-the-payload).
-
 ## Getting a payload onto the device
 
-Boot control only chooses between bundles that are already on the device. Delivering one is handled elsewhere, and is documented in [pear-mobile](https://github.com/holepunchto/pear-mobile#making-updates):
+Boot control only chooses between bundles that are already on the device. Producing and delivering one is handled elsewhere, and is documented in [pear-mobile](https://github.com/holepunchto/pear-mobile#making-updates):
 
 - `package.json` `productName`, `upgrade`, and `version`, and what the updater requires of each
+- bundling the app with `npx react-native bundle`, and the Metro config that needs to be in place
 - the `by-arch/<host>/app/<productName>` payload layout, and the hosts a payload has to cover
 - `pear.json` `updates.minver`, which keeps a payload away from a native build too old for it
 - bundling the Bare worker, including EAS builds
@@ -253,11 +185,11 @@ Custom or older templates (an Objective-C `AppDelegate`, a Java `MainApplication
 
 #### `pear-runtime-react-native/plugin`
 
-Expo config plugin. Goes in `expo.plugins`, not called directly.
+Expo config plugin, and the only export. Goes in `expo.plugins`, not called directly. The bare package name works too, since the plugin is the package main entry:
 
-#### `const { getMetroConfig } = require('pear-runtime-react-native/metro-config')`
-
-Metro config factory, see [Metro](#metro).
+```json
+{ "expo": { "plugins": ["pear-runtime-react-native"] } }
+```
 
 ## License
 

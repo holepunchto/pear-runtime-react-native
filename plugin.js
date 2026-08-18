@@ -1,6 +1,6 @@
 'use strict'
 
-const t = require('../lib/ota-templates.js')
+const t = require('./lib/ota-templates.js')
 
 const BUNDLE_ROOT = '.expo/.virtual-metro-entry'
 
