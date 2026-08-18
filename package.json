@@ -5,8 +5,7 @@
   "main": "plugin.js",
   "exports": {
     "./package": "./package.json",
-    ".": "./plugin.js",
-    "./plugin": "./plugin.js"
+    ".": "./plugin.js"
   },
   "files": [
     "package.json",

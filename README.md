@@ -181,11 +181,9 @@ Custom or older templates (an Objective-C `AppDelegate`, a Java `MainApplication
 > [!WARNING]
 > The iOS patch replaces the entire `bundleURL()` implementation, and the Android patch adds its own `jsBundleFilePath`. This conflicts with anything else that selects the JS bundle, including Expo Updates, Sentry bundle handling, and other OTA systems. An app should have exactly one explicit owner of bundle selection, and the generated native files are worth inspecting after prebuild to confirm which one won.
 
-## Exports
+## Usage
 
-#### `pear-runtime-react-native/plugin`
-
-Expo config plugin, and the only export. Goes in `expo.plugins`, not called directly. The bare package name works too, since the plugin is the package main entry:
+In `app.json`:
 
 ```json
 { "expo": { "plugins": ["pear-runtime-react-native"] } }
