@@ -19,11 +19,11 @@ This package owns exactly two things:
 - **Boot control.** An Expo config plugin that patches the generated native projects so release builds choose between the OTA bundle and the bundle shipped in the binary.
 - **Metro config.** A helper that merges the React Native and Expo Metro defaults so `npx react-native bundle` produces usable OTA payloads.
 
-Everything else in a working Pear mobile app belongs to other packages: downloading and applying updates is [pear-mobile](https://github.com/holepunchto/pear-mobile) and [pear-runtime-updater](https://github.com/holepunchto/pear-runtime-updater), Bare workers and the Android minimum SDK are [react-native-bare-kit](https://github.com/holepunchto/react-native-bare-kit), and deployment payloads are [pear-build](https://github.com/holepunchto/pear-build) and [`pear`](https://docs.pears.com).
+Everything else in a working Pear mobile app belongs to [pear-mobile](https://github.com/holepunchto/pear-mobile).
 
 The guide below covers the whole standard integration, because the pieces only work together. Requirements that come from another package are labelled as such, so nothing here is mistaken for a requirement of the OTA plugin itself.
 
-A complete working project is [hello-pear-react-native](https://github.com/holepunchto/hello-pear-react-native), which every command and path in this README was verified against.
+A complete working project is [hello-pear-react-native](https://github.com/holepunchto/hello-pear-react-native).
 
 ## Required packages
 
@@ -33,8 +33,7 @@ npx expo install expo-build-properties
 npm install --save-dev @react-native/metro-config @react-native-community/cli
 ```
 
-- **`pear-mobile`** is the runtime and updater. Not required by boot control, required by every real app.
-- **`react-native-bare-kit`** must be declared in the project root so autolinking builds its native module in. That and `expo-build-properties`, which raises the Android minimum SDK to the level Bare Kit needs, are [pear-mobile requirements](https://github.com/holepunchto/pear-mobile#requirements) rather than requirements of the OTA config plugin. They appear here because a working app needs both.
+- **`pear-mobile`** is used to start a bare thread and run the updater in-app.
 - **`@react-native/metro-config`** is an optional peer of this package and must be installed by the app, at the version matching its React Native. It is deliberately not a hard dependency here so the project keeps control of the version.
 - **`@react-native-community/cli`** is required because `npx react-native bundle` in modern React Native only delegates. `react-native/cli.js` resolves `@react-native-community/cli` from the project and throws `react-native/cli is deprecated` when it is absent, which means OTA payloads cannot be built without it.
 - **`expo`** is required for the plugin flow even though it is an optional peer. The peer is optional because manual integration in a plain React Native project is also supported.
@@ -42,6 +41,8 @@ npm install --save-dev @react-native/metro-config @react-native-community/cli
 ## Expo setup
 
 The config plugin requires Expo and Prebuild. There is no autolinking path and no runtime patching: the native projects are generated, then patched.
+
+inside `app.json`:
 
 ```json
 {
@@ -73,13 +74,15 @@ Then generate the native projects:
 npx expo prebuild
 ```
 
-The plugin edits two files. In `AppDelegate.swift` it replaces `bundleURL()`. In `MainApplication.kt` it passes `jsBundleFilePath` into `ExpoReactHostFactory.getDefaultReactHost()` and appends the version check helpers. Running it again on an already patched file does nothing. If it cannot find either hook it throws during prebuild, instead of quietly producing a build with no boot control.
+The plugin edits two files. In `AppDelegate.swift` it replaces `bundleURL()`. In `MainApplication.kt` it passes `jsBundleFilePath` into `ExpoReactHostFactory.getDefaultReactHost()` and appends the version check helpers. 
+
+use the `--clean` flag to re-generate already patched files.
 
 For plain React Native projects the native logic has to be integrated by hand, see [Plain React Native](#plain-react-native). `expo-build-properties` does not apply to a manually managed project either; the Android `minSdkVersion` has to be raised directly in `android/build.gradle`.
 
 ## Boot control
 
-Release builds load `pear-runtime/ota/app.bundle` only if the `version` in `pear-runtime/ota/package.json` is newer than the installed app version. If it is not newer they load the bundle shipped in the binary. Debug builds always load from Metro.
+Release builds load the downloaded OTA update only if the `version` in of the `package.json` that the OTA was deployed with is newer than the installed app version. If it is not newer they load the bundle shipped in the app's binary. Debug builds always load from Metro.
 
 Where the OTA folder lives, and what the version gets compared against:
 
@@ -87,11 +90,6 @@ Where the OTA folder lives, and what the version gets compared against:
 - Android: `<filesDir>/pear-runtime/ota`, compared with the package `versionName`
 
 Comparison is plain [SemVer 2.0.0](https://semver.org), no extra rules on top. Both sides must be valid SemVer. Anything the spec rejects counts as not newer, so a bad version string just means the app keeps booting the bundle of the app binary (not the OTA one).
-
-- All three parts are required. If the native version is `1.0` no update will ever apply, so `CFBundleShortVersionString` and `versionName` must be set to `1.0.0`.
-- Leading zeros (`1.0.01`) and a `v` prefix (`v1.0.0`) are not valid SemVer.
-- Prerelease versions work. `1.0.0-rc.2` is newer than `1.0.0-rc.1`, and `1.0.0` is newer than any `1.0.0-*`. Undotted counters are the exception: the spec compares an identifier containing non-digits as a plain string, so `1.0.0-rc10` is **older** than `1.0.0-rc9`. Written as `-rc.10` the number is compared as a number.
-- Build metadata is ignored, so `1.0.0+2` is not newer than `1.0.0+1`. It cannot be used to push a new payload on the same version.
 
 ## What an OTA may change
 
@@ -115,8 +113,6 @@ const { version } = require('./package.json')
 
 module.exports = { ...app.expo, version }
 ```
-
-With this file present, `app.json` reaches Expo only through that `require`, and `package.json` always wins. A `version` key added to `app.json` is silently ignored rather than honoured.
 
 Versions must be valid SemVer and strictly monotonic across native and OTA releases combined:
 
@@ -148,9 +144,6 @@ For plain React Native, either leave `useExpo` unset or turn it off explicitly:
 ```js
 module.exports = getMetroConfig(__dirname, { useExpo: false })
 ```
-
-> [!NOTE]
-> Only an absent module is tolerated, and only for the implied default. A module that is installed but fails to load, or a config generator that throws, always propagates rather than being skipped, so a broken Expo or Sentry integration cannot quietly produce a bundle missing their settings.
 
 Existing custom Metro settings must be merged into the returned config, not used in place of it. Mutating or spreading the nested objects keeps the React Native and Expo defaults that OTA bundling depends on, whereas assigning a fresh `resolver` or `transformer` replaces them:
 
@@ -242,7 +235,7 @@ The plugin only works with Expo. It runs as an Expo config mod, and the Android 
 - iOS: override `bundleURL()` in `AppDelegate`. Return `<Application Support>/pear-runtime/ota/app.bundle` if it exists and its `package.json` `version` is newer than `CFBundleShortVersionString`, otherwise return the shipped `main.jsbundle`.
 - Android: override `getJSBundleFile()` on the `ReactNativeHost`. Return `<filesDir>/pear-runtime/ota/app.bundle` under the same condition, otherwise `null`.
 
-The Swift and Kotlin the plugin generates lives in `lib/ota-templates.js` and can be used for reference.
+The Swift and Kotlin the plugin generates lives in [ota-templates.js](./lib/ota-templates.js) and can be used for reference.
 
 ## Conflicts and expectations
 
@@ -251,7 +244,7 @@ The automated plugin expects the stock Expo templates:
 - a Swift `AppDelegate` containing `bundleURL()`
 - a Kotlin `MainApplication` using `ExpoReactHostFactory.getDefaultReactHost()`
 
-Custom or older templates (an Objective-C `AppDelegate`, a Java `MainApplication`, a hand-written React host) need manual adaptation. The plugin throws during prebuild rather than guessing.
+Custom or older templates (an Objective-C `AppDelegate`, a Java `MainApplication`, a hand-written React host) need manual adaptation.
 
 > [!WARNING]
 > The iOS patch replaces the entire `bundleURL()` implementation, and the Android patch adds its own `jsBundleFilePath`. This conflicts with anything else that selects the JS bundle, including Expo Updates, Sentry bundle handling, and other OTA systems. An app should have exactly one explicit owner of bundle selection, and the generated native files are worth inspecting after prebuild to confirm which one won.
