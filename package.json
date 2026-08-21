@@ -34,7 +34,7 @@
     "prettier-config-holepunch": "^2.0.0"
   },
   "peerDependencies": {
-    "expo": "*"
+    "expo": ">=55"
   },
   "peerDependenciesMeta": {
     "expo": {

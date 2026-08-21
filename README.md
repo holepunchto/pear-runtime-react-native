@@ -44,7 +44,7 @@ inside `app.json`:
 {
   "expo": {
     "plugins": [
-      "pear-runtime-react-native/plugin",
+      "pear-runtime-react-native",
       [
         "expo-build-properties",
         {
@@ -147,7 +147,7 @@ npx expo prebuild --clean
 That includes installing or updating native dependencies, changing or adding config plugins, upgrading Expo, and upgrading this package. `--clean` replaces the generated native directories, so any hand edits inside `ios/` or `android/` are lost.
 
 > [!IMPORTANT]
-> Upgrading `pear-runtime-react-native` on its own does not refresh already generated native code. The plugin skips files that already contain its marker, so a project with an `ios/` or `android/` folder from an older version keeps the old boot logic until a clean prebuild runs.
+> Upgrading `pear-runtime-react-native` on its own does not refresh already generated native code, and prebuild will fail until the native projects are regenerated. See [What the plugin will and will not touch](#what-the-plugin-will-and-will-not-touch).
 
 OTA behavior must be tested in a Release build. Debug builds always load from Metro, so a debug run proves nothing about bundle selection.
 
@@ -159,6 +159,42 @@ Applying an update writes the new bundle and its manifest into `pear-runtime/ota
 - Android captures `jsBundleFilePath` when the React host is created and caches that host, so a JavaScript reload generally reuses the old path and the update takes effect after a full process restart.
 
 Treating a full restart as the requirement on both platforms is the safe assumption.
+
+## What the plugin will and will not touch
+
+The plugin only rewrites the two functions named above and leaves the rest of both files alone. What
+it writes is wrapped in comments:
+
+```swift
+// !!! REMOVE THIS AND ONLY THIS COMMENT IF YOU EDIT !!!
+// pear-runtime-react-native OTA v3
+...
+// pear-runtime-react-native OTA v3 end
+```
+
+> [!WARNING]
+> Adopting this plugin in a project that already has its own code in `bundleURL()` or in
+> `getDefaultReactHost()` will overwrite it on the next prebuild. The plugin has no way to tell a
+> hand-written implementation from the one Expo generates, and it does not try. If something else in
+> the project already decides which JS bundle to load, link this by hand instead of adding the
+> plugin, using [ota-templates.js](./lib/ota-templates.js) as the reference.
+
+Once linked, a later prebuild reads the version and the edit comment, nothing else:
+
+| What it finds                         | What it does                     |
+| ------------------------------------- | -------------------------------- |
+| No comments                           | links                            |
+| This version                          | nothing, whatever is there stays |
+| Another version, edit comment present | replaces the whole block         |
+| Another version, edit comment removed | warns, changes nothing           |
+
+So editing the generated code is fine as long as the edit comment goes with it. Keeping the comment
+means the block is still the plugin's and will be replaced by the next version; removing it means the
+code belongs to the project, and prebuild will only warn that a newer version was not linked. A clean
+prebuild takes the new version either way.
+
+Blocks written before the closing marker existed cannot be delimited, so those warn as well and need
+`npx expo prebuild --clean`.
 
 ## Plain React Native
 
