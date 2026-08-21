@@ -2,23 +2,15 @@
   "name": "pear-runtime-react-native",
   "version": "2.0.1",
   "description": "Enables OTA updates with pear-runtime in react-native mobile apps",
-  "main": "index.js",
+  "main": "plugin.js",
   "exports": {
     "./package": "./package.json",
-    ".": {
-      "types": "./index.d.ts",
-      "default": "./index.js"
-    },
-    "./metro-config": "./metro.js",
-    "./plugin": "./plugin/pearOta.js"
+    ".": "./plugin.js"
   },
   "files": [
     "package.json",
-    "index.js",
-    "index.d.ts",
-    "metro.js",
-    "lib/ota-templates.js",
-    "plugin/pearOta.js"
+    "plugin.js",
+    "lib/ota-templates.js"
   ],
   "scripts": {
     "format": "prettier . --write",
@@ -42,16 +34,10 @@
     "prettier-config-holepunch": "^2.0.0"
   },
   "peerDependencies": {
-    "react-native-bare-kit": "*"
+    "expo": ">=55"
   },
   "peerDependenciesMeta": {
     "expo": {
-      "optional": true
-    },
-    "@react-native-async-storage/async-storage": {
-      "optional": true
-    },
-    "@react-native/metro-config": {
       "optional": true
     }
   }
