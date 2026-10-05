@@ -76,6 +76,8 @@ Android also generates a small local Expo module in `modules/pear-runtime-reload
 (or the configured `expo.autolinking.nativeModulesDir`) so that reloads repeat the
 same version check. Its native source is kept in `ota-templates.js`.
 
+Android requires Expo SDK 55 or newer, whose template uses `ExpoReactHostFactory.getDefaultReactHost()`. A successful Android prebuild generates the module whenever the native code uses its reload hook. If prebuild preserves manually edited code without that hook, it skips module generation. Expo Autolinking must include the generated module.
+
 use the `--clean` flag to re-generate already patched files.
 
 For plain React Native projects the native logic has to be integrated by hand, see [Plain React Native](#plain-react-native). `expo-build-properties` does not apply to a manually managed project either; the Android `minSdkVersion` has to be raised directly in `android/build.gradle`.

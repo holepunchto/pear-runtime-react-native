@@ -22,6 +22,9 @@ function pearOta(config) {
 
   return withMainApplication(config, async (config) => {
     patch(config, t.patchMainApplication)
+    if (!config.modResults.contents.includes('PearRuntimePackage.bundleFileProvider')) {
+      return config
+    }
     const root = config.modRequest.projectRoot
     const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'))
     const options = pkg.expo?.autolinking
