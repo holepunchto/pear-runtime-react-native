@@ -29,7 +29,7 @@ test('generates SemVer OTA boot control', (t) => {
   const swift = patchAppDelegate(appDelegate('55'), BUNDLE_ROOT)
   const kotlin = patchMainApplication(mainApplication('55'))
 
-  t.ok(swift.includes('// pear-runtime-react-native OTA v3'))
+  t.ok(swift.includes('// pear-runtime-react-native OTA v4'))
   t.ok(swift.includes('pearOtaSemVerNewer(version, native)'))
   t.ok(swift.includes('omittingEmptySubsequences: false'))
   t.ok(kotlin.includes('// pear-runtime-react-native OTA v4'))
@@ -112,7 +112,7 @@ test('another version is replaced while the edit comment is there', (t) => {
   for (const { name, patch, stock } of PLATFORMS) {
     const linked = patch(stock())
 
-    for (const other of ['1', '99']) {
+    for (const other of ['1', '3', '99']) {
       const { result, warnings } = withoutWarnings(() =>
         patch(linked.replace(/OTA v\d+/g, 'OTA v' + other))
       )

@@ -171,9 +171,9 @@ it writes is wrapped in comments:
 
 ```swift
 // !!! REMOVE THIS AND ONLY THIS COMMENT IF YOU EDIT !!!
-// pear-runtime-react-native OTA v3
+// pear-runtime-react-native OTA v4
 ...
-// pear-runtime-react-native OTA v3 end
+// pear-runtime-react-native OTA v4 end
 ```
 
 > [!WARNING]
@@ -185,7 +185,7 @@ it writes is wrapped in comments:
 
 Once linked, a later prebuild reads the version and the edit comment, nothing else:
 
-The Android template revision is v4; the iOS template remains v3.
+Both platforms use the shared template revision v4.
 
 | What it finds                         | What it does                     |
 | ------------------------------------- | -------------------------------- |
