@@ -36,7 +36,7 @@ The packages needed to build a payload, `@react-native/metro-config` and `@react
 
 ## Expo setup
 
-The config plugin requires Expo and Prebuild. There is no autolinking path and no runtime patching: the native projects are generated, then patched.
+The config plugin requires Expo and Prebuild. The native projects are generated, then patched.
 
 inside `app.json`:
 
@@ -71,6 +71,12 @@ npx expo prebuild
 ```
 
 The plugin edits two files. In `AppDelegate.swift` it replaces `bundleURL()`. In `MainApplication.kt` it passes `jsBundleFilePath` into `ExpoReactHostFactory.getDefaultReactHost()` and appends the version check helpers.
+
+Android also generates a small local Expo module in `modules/pear-runtime-reload`
+(or the configured `expo.autolinking.nativeModulesDir`) so that reloads repeat the
+same version check. Its native source is kept in `ota-templates.js`.
+
+Android requires Expo SDK 55 or newer, whose template uses `ExpoReactHostFactory.getDefaultReactHost()`. A successful Android prebuild generates the module whenever the native code uses its reload hook. If prebuild preserves manually edited code without that hook, it skips module generation. Expo Autolinking must include the generated module.
 
 use the `--clean` flag to re-generate already patched files.
 
@@ -156,9 +162,9 @@ OTA behavior must be tested in a Release build. Debug builds always load from Me
 Applying an update writes the new bundle and its manifest into `pear-runtime/ota`. It does not switch the running app over. Activation happens at the next native bundle selection:
 
 - iOS re-reads `bundleURL()` on reload, so a JavaScript reload can pick up a freshly applied OTA.
-- Android captures `jsBundleFilePath` when the React host is created and caches that host, so a JavaScript reload generally reuses the old path and the update takes effect after a full process restart.
+- Android's generated host handler repeats the same bundle and version check on every reload.
 
-Treating a full restart as the requirement on both platforms is the safe assumption.
+After applying an update, Expo's `reloadAppAsync()` activates it on both platforms.
 
 ## What the plugin will and will not touch
 
@@ -167,9 +173,9 @@ it writes is wrapped in comments:
 
 ```swift
 // !!! REMOVE THIS AND ONLY THIS COMMENT IF YOU EDIT !!!
-// pear-runtime-react-native OTA v3
+// pear-runtime-react-native OTA v4
 ...
-// pear-runtime-react-native OTA v3 end
+// pear-runtime-react-native OTA v4 end
 ```
 
 > [!WARNING]
@@ -180,6 +186,8 @@ it writes is wrapped in comments:
 > plugin, using [ota-templates.js](./lib/ota-templates.js) as the reference.
 
 Once linked, a later prebuild reads the version and the edit comment, nothing else:
+
+Both platforms use the shared template revision v4.
 
 | What it finds                         | What it does                     |
 | ------------------------------------- | -------------------------------- |
@@ -204,6 +212,8 @@ The plugin only works with Expo. It runs as an Expo config mod, and the Android 
 - Android: override `getJSBundleFile()` on the `ReactNativeHost`. Return `<filesDir>/pear-runtime/ota/app.bundle` under the same condition, otherwise `null`.
 
 The Swift and Kotlin the plugin generates lives in [ota-templates.js](./lib/ota-templates.js) and can be used for reference.
+
+Without Expo, omit the `PearRuntimePackage.bundleFileProvider` registration when adapting the Android helper. The generated reload module requires Expo; a plain React Native integration needs its own bundle loader that repeats the check on reload, or a full process restart.
 
 ## Conflicts and expectations
 

@@ -1,6 +1,10 @@
 const { test } = require('brittle')
 const fixtures = require('./fixtures')
-const { patchAppDelegate, patchMainApplication } = require('../lib/ota-templates')
+const {
+  patchAppDelegate,
+  patchMainApplication,
+  androidReloadModule
+} = require('../lib/ota-templates')
 
 const BUNDLE_ROOT = '.expo/.virtual-metro-entry'
 const SDKS = ['53', '54', '55']
@@ -25,10 +29,10 @@ test('generates SemVer OTA boot control', (t) => {
   const swift = patchAppDelegate(appDelegate('55'), BUNDLE_ROOT)
   const kotlin = patchMainApplication(mainApplication('55'))
 
-  t.ok(swift.includes('// pear-runtime-react-native OTA v3'))
+  t.ok(swift.includes('// pear-runtime-react-native OTA v4'))
   t.ok(swift.includes('pearOtaSemVerNewer(version, native)'))
   t.ok(swift.includes('omittingEmptySubsequences: false'))
-  t.ok(kotlin.includes('// pear-runtime-react-native OTA v3'))
+  t.ok(kotlin.includes('// pear-runtime-react-native OTA v4'))
   t.ok(kotlin.includes('pearOtaSemVerNewer(version, native)'))
   t.ok(kotlin.includes('pearSemVerPattern.matchEntire(value)'))
   t.ok(
@@ -108,7 +112,7 @@ test('another version is replaced while the edit comment is there', (t) => {
   for (const { name, patch, stock } of PLATFORMS) {
     const linked = patch(stock())
 
-    for (const other of ['1', '99']) {
+    for (const other of ['1', '3', '99']) {
       const { result, warnings } = withoutWarnings(() =>
         patch(linked.replace(/OTA v\d+/g, 'OTA v' + other))
       )
@@ -180,4 +184,28 @@ test('kotlin argument injection lands after code, not inside a trailing comment'
   t.ok(out.includes('packageList = PackageList(this).packages,'))
   t.absent(out.includes('// TODO add custom packages,'), 'comment kept intact')
   t.is((out.match(/jsBundleFilePath = pearOtaBundle/g) || []).length, 1)
+})
+
+test('Android reloads reevaluate the existing version check', (t) => {
+  const kotlin = patchMainApplication(mainApplication('55'))
+  const registration =
+    'to.holepunch.pear.runtime.PearRuntimePackage.bundleFileProvider = { pearOtaBundle(context) }'
+  t.ok(kotlin.includes(registration))
+  t.ok(kotlin.indexOf('if (BuildConfig.DEBUG) return null') < kotlin.indexOf(registration))
+  t.ok(kotlin.indexOf(registration) < kotlin.indexOf('return try'))
+  const files = androidReloadModule()
+  t.is(Object.keys(files).length, 4)
+  const hook = files['android/src/main/java/to/holepunch/pear/runtime/PearRuntimePackage.kt']
+  t.ok(hook.includes('return provider() ?: "assets://index.android.bundle"'))
+  t.ok(hook.includes('if (bundleFileProvider == null) return emptyList()'))
+})
+
+test('unmodified v3 Android code upgrades to the reload hook', (t) => {
+  const linked = patchMainApplication(mainApplication('55'))
+    .replace(/OTA v4/g, 'OTA v3')
+    .replace(/^.*bundleFileProvider =.*\n/m, '')
+  const patched = patchMainApplication(linked)
+  t.ok(patched.includes('bundleFileProvider = { pearOtaBundle(context) }'))
+  t.is((patched.match(/jsBundleFilePath = pearOtaBundle/g) || []).length, 1)
+  t.is(patchMainApplication(patched), null)
 })
